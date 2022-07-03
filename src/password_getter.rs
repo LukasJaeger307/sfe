@@ -16,19 +16,7 @@
  * You should have received a copy of the GNU General Public License
  * along with SFE.  If not, see <http://www.gnu.org/licenses/>.
  */
-use std::error::Error;
-use std::fmt;
-
-#[derive(Debug, Clone)]
-pub struct PasswordError;
-
-impl fmt::Display for PasswordError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "invalid password")
-    }
-}
-
-impl Error for PasswordError{} 
+use crate::password_error::PasswordError;
 
 pub fn get_password() -> Result<String, PasswordError>{
     let password1 = rpassword::prompt_password("Insert password: ").unwrap();
