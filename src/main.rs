@@ -16,6 +16,7 @@
  * You should have received a copy of the GNU General Public License
  * along with SFE.  If not, see <http://www.gnu.org/licenses/>.
  */
+mod crypto_parameters;
 mod password_error;
 mod password_getter;
 
