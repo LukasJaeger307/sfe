@@ -29,7 +29,7 @@ fn u32_to_byte_array(integer : u32) -> [u8; 4] {
     byte_array
 }
 
-fn byte_array_to_u32(byte_array : [u8; 4]) -> u32 {
+fn byte_array_to_u32(byte_array : &[u8; 4]) -> u32 {
     let mut integer : u32 = 0x00000000;
     for i in 0..4 {
         integer |= (byte_array[i] as u32) << ((3 - i) * 8);
@@ -53,11 +53,12 @@ mod utility_function_tests {
     fn test_byte_array_to_u32() {
         let to_convert : [u8; 4] = [0x02, 0xAB, 0x1D, 0x00];
         let expected_integer : u32 = 0x02AB1D00;
-        let actual_integer: u32 = byte_array_to_u32(to_convert);
+        let actual_integer: u32 = byte_array_to_u32(&to_convert);
         assert_eq!(expected_integer, actual_integer);
     }
 }
 
+#[derive(PartialEq, Debug)]
 pub struct CryptoParameters {
     block_cipher : BlockCipher,
     kdf : Kdf,
@@ -105,6 +106,50 @@ impl CryptoParameters {
         u32_to_byte_array(operation_mode_integer)
     }
 
+    pub fn from_byte_buffer(byte_buffer : &[u8; 16]) -> Option<CryptoParameters> {
+        let block_cipher_integer : u32 = Self::get_sub_array_at_offset_as_u32(&byte_buffer, 0);
+        let block_cipher : Option<BlockCipher> = 
+            BlockCipher::from_integer(block_cipher_integer);
+        if block_cipher == None {
+            return None;
+        }
+
+        let kdf_integer : u32 = Self::get_sub_array_at_offset_as_u32(byte_buffer, 4);
+        let kdf : Option<Kdf> = 
+            Kdf::from_integer(kdf_integer);
+        if kdf == None {
+            return None;
+        }
+
+        let key_size_integer : u32 = Self::get_sub_array_at_offset_as_u32(byte_buffer, 8);
+        let key_size : Option<KeySize> = 
+            KeySize::from_integer(key_size_integer);
+        if key_size == None {
+            return None;
+        }
+        
+        let operation_mode_integer : u32 = Self::get_sub_array_at_offset_as_u32(byte_buffer, 12);
+        let operation_mode : Option<OperationMode> = 
+            OperationMode::from_integer(operation_mode_integer);
+        if operation_mode == None {
+            return None;
+        }
+
+        Some(CryptoParameters{
+            block_cipher : block_cipher.unwrap(),
+            kdf : kdf.unwrap(),
+            key_size : key_size.unwrap(),
+            operation_mode : operation_mode.unwrap(),
+        })
+    }
+
+    fn get_sub_array_at_offset_as_u32(array : &[u8; 16], offset : usize) -> u32 {
+        let mut sub_array : [u8; 4] = [0xFF; 4];
+        for i in 0..4 {
+            sub_array[i] = array[i + offset];
+        }
+        byte_array_to_u32(&sub_array)
+    }
 }
 
 #[cfg(test)]
@@ -126,5 +171,60 @@ mod crypto_parameters_tests {
             ,0x00, 0x00, 0x00, 0x01];
         let actual_array : [u8; 16] = parameters.to_byte_buffer();
         assert_eq!(expected_array, actual_array);
+    }
+
+    #[test]
+    fn test_crypto_parameters_from_byte_buffer_wrong_block_cipher() {
+        let byte_buffer : [u8; 16] = 
+            [0x00, 0x00, 0x00, 0x00
+            ,0x00, 0x00, 0x00, 0x01
+            ,0x00, 0x00, 0x01, 0x00
+            ,0x00, 0x00, 0x00, 0x01];
+        assert_eq!(CryptoParameters::from_byte_buffer(&byte_buffer), None);
+    }
+    
+    #[test]
+    fn test_crypto_parameters_from_byte_buffer_wrong_kdf() {
+        let byte_buffer : [u8; 16] = 
+            [0x00, 0x00, 0x00, 0x02
+            ,0x00, 0x00, 0x00, 0x00
+            ,0x00, 0x00, 0x01, 0x00
+            ,0x00, 0x00, 0x00, 0x01];
+        assert_eq!(CryptoParameters::from_byte_buffer(&byte_buffer), None);
+    }
+    
+    #[test]
+    fn test_crypto_parameters_from_byte_buffer_wrong_key_size() {
+        let byte_buffer : [u8; 16] = 
+            [0x00, 0x00, 0x00, 0x02
+            ,0x00, 0x00, 0x00, 0x01
+            ,0x00, 0x00, 0x00, 0xFF
+            ,0x00, 0x00, 0x00, 0x01];
+        assert_eq!(CryptoParameters::from_byte_buffer(&byte_buffer), None);
+    }
+    
+    #[test]
+    fn test_crypto_parameters_from_byte_buffer_wrong_operation_mode() {
+        let byte_buffer : [u8; 16] = 
+            [0x00, 0x00, 0x00, 0x02
+            ,0x00, 0x00, 0x00, 0x01
+            ,0x00, 0x00, 0x01, 0x00
+            ,0x00, 0x00, 0x00, 0x00];
+        assert_eq!(CryptoParameters::from_byte_buffer(&byte_buffer), None);
+    }
+    
+    #[test]
+    fn test_crypto_parameters_from_byte_buffer() {
+        let byte_buffer : [u8; 16] = 
+            [0x00, 0x00, 0x00, 0x02
+            ,0x00, 0x00, 0x00, 0x01
+            ,0x00, 0x00, 0x01, 0x00
+            ,0x00, 0x00, 0x00, 0x01];
+        let parameters : CryptoParameters = 
+            CryptoParameters::from_byte_buffer(&byte_buffer).unwrap();
+        assert_eq!(parameters.block_cipher, BlockCipher::Camellia);
+        assert_eq!(parameters.kdf, Kdf::Pbkdf2);
+        assert_eq!(parameters.key_size, KeySize::Size256);
+        assert_eq!(parameters.operation_mode, OperationMode::Gcm);
     }
 }
