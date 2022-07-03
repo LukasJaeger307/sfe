@@ -16,17 +16,28 @@
  * You should have received a copy of the GNU General Public License
  * along with SFE.  If not, see <http://www.gnu.org/licenses/>.
  */
-mod password_getter;
+use std::error::Error;
+use std::fmt;
 
-use crate::password_getter::get_password;
+#[derive(Debug, Clone)]
+pub struct PasswordError;
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let password : String = match get_password() {
-        Ok(string) => string,
-        Err(error) => {
-            return Err(error.into());
-        }
-    };
-    println!("Your password is {}", password);
-    Ok(())
+impl fmt::Display for PasswordError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "invalid password")
+    }
+}
+
+impl Error for PasswordError{} 
+
+pub fn get_password() -> Result<String, PasswordError>{
+    let password1 = rpassword::prompt_password("Insert password: ").unwrap();
+    let password2 = rpassword::prompt_password("Insert password again: ").unwrap();
+    if password1 != password2 {
+        return Err(PasswordError);
+    } else if password1.trim().is_empty() {
+        return Err(PasswordError);
+    } else {
+        return Ok(password1);
+    }
 }
