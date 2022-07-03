@@ -18,19 +18,19 @@
  */
 #[derive(PartialEq, Debug)]
 pub enum Kdf {
-    Pbkdf2,
+    Pbkdf2HmacSha3512,
 }
 
 impl Kdf {
     pub fn to_integer(&self) -> u32 {
         match self {
-            Kdf::Pbkdf2 => 1,
+            Kdf::Pbkdf2HmacSha3512 => 1,
         }
     }
 
     pub fn from_integer(integer : u32) -> Option<Kdf> {
         match integer {
-            1 => Some(Kdf::Pbkdf2),
+            1 => Some(Kdf::Pbkdf2HmacSha3512),
             _ => None,
         }
     }
@@ -42,13 +42,13 @@ mod kdf_tests {
 
     #[test]
     fn test_kdf_to_integer() {
-        assert_eq!(Kdf::Pbkdf2.to_integer(), 1);
+        assert_eq!(Kdf::Pbkdf2HmacSha3512.to_integer(), 1);
     }
     
     #[test]
     fn test_kdf_from_integer() {
         assert_eq!(Kdf::from_integer(0), None);
-        assert_eq!(Kdf::from_integer(1).unwrap(), Kdf::Pbkdf2);
+        assert_eq!(Kdf::from_integer(1).unwrap(), Kdf::Pbkdf2HmacSha3512);
         assert_eq!(Kdf::from_integer(2), None);
     }
 }

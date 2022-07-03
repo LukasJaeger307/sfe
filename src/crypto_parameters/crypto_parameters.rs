@@ -160,7 +160,7 @@ mod crypto_parameters_tests {
     fn test_crypto_parameters_to_byte_buffer() {
         let parameters : CryptoParameters = CryptoParameters{
             block_cipher : BlockCipher::Camellia,
-            kdf : Kdf::Pbkdf2,
+            kdf : Kdf::Pbkdf2HmacSha3512,
             key_size : KeySize::Size256,
             operation_mode : OperationMode::Gcm,
         };
@@ -223,7 +223,7 @@ mod crypto_parameters_tests {
         let parameters : CryptoParameters = 
             CryptoParameters::from_byte_buffer(&byte_buffer).unwrap();
         assert_eq!(parameters.block_cipher, BlockCipher::Camellia);
-        assert_eq!(parameters.kdf, Kdf::Pbkdf2);
+        assert_eq!(parameters.kdf, Kdf::Pbkdf2HmacSha3512);
         assert_eq!(parameters.key_size, KeySize::Size256);
         assert_eq!(parameters.operation_mode, OperationMode::Gcm);
     }
