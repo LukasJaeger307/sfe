@@ -17,6 +17,7 @@
  * along with SFE.  If not, see <http://www.gnu.org/licenses/>.
  */
 mod crypto_parameters;
+mod file_loader;
 mod password_error;
 mod password_getter;
 
