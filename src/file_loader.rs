@@ -61,28 +61,10 @@ impl FileLoader {
                     None => {return None;}
                     Some(source) => source
                 };
-                let destination_file = match OpenOptions::new()
-                    .read(true)
-                    .write(true)
-                    .create(true)
-                    .open(ciphertext_path) {
-                    Ok(file) => file,
-                    Err(err) => {
-                        return None;
-                    }
-                };
-                let source_len : usize = source.len();
-                match destination_file.set_len((self.header_size + source_len) as u64) {
-                    Ok(ok) => {},
-                    Err(err) => {
-                        return None;
-                    }
-                };
-                let destination = match unsafe{MmapMut::map_mut(&destination_file)} {
-                    Ok(destination) => destination,
-                    Err(err) => {
-                        return None;
-                    }
+                let destination_length : usize = source.len() + self.header_size;
+                let destination = match self.create_destination_memmap(path, destination_length) {
+                    None =>{return None;}
+                    Some(destination) => destination
                 };
                 Some(LoadedFiles{
                     source : source,
@@ -108,12 +90,59 @@ impl FileLoader {
             }
         }
     }
-    
-    fn load_files_for_decryption(&self, path : &String) -> Option<LoadedFiles> {
-        // TODO: Implement!
-        None
+
+    fn create_destination_memmap(&self, path : &String, length : usize) -> Option<MmapMut> {
+        let destination_file = match OpenOptions::new()
+            .read(true)
+            .write(true)
+            .create(true)
+            .open(path) {
+                Ok(file) => file,
+                Err(err) => {
+                    return None;
+                }
+            };
+        match destination_file.set_len(length as u64) {
+            Ok(ok) => {},
+            Err(err) => {
+                return None;
+            }
+        };
+        match unsafe{MmapMut::map_mut(&destination_file)} {
+            Ok(destination) => Some(destination),
+            Err(err) => None
+        }
     }
 
+    
+    fn load_files_for_decryption(&self, path : &String) -> Option<LoadedFiles> {
+        if !Path::new(path).exists() {
+            None
+        } else {
+            let extension_length : usize = self.filename_extension.len() + 1;
+            let final_index : usize = path.len() - extension_length;
+            let plaintext_path : String = path[0..final_index].to_string();
+            println!("Plaintext path: {}", plaintext_path);
+            if Path::new(&plaintext_path).exists() {
+                None
+            } else {
+                let source = match self.create_source_memmap(path) {
+                    None => {return None;}
+                    Some(source) => source
+                };
+                let destination_length : usize = source.len() - self.header_size;
+                let destination = match self.create_destination_memmap(path, destination_length) {
+                    None =>{return None;}
+                    Some(destination) => destination
+                };
+                Some(LoadedFiles{
+                    source : source,
+                    destination : destination,
+                    direction : self.direction,
+                })
+            }
+        }
+    }
 }
 
 
@@ -158,14 +187,7 @@ mod file_loader_tests {
 
     #[test]
     fn test_load_files_encryption() {
-        if Path::new("testfiles/test2.txt.enc").exists() {
-            match fs::remove_file("testfiles/test2.txt.enc") {
-                Ok(ok) => {},
-                Err(err) => {
-                    assert!(false);
-                }
-            };
-        }
+        delete_if_present(&"testfiles/test2.txt.enc");
         let loader : FileLoader = FileLoader{
             direction : Direction::Encrypt,
             filename_extension : "enc".to_string(),
@@ -178,5 +200,34 @@ mod file_loader_tests {
         let source_len : usize = loaded_files.source.len();
         let destination_len : usize = loaded_files.destination.len();
         assert_eq!(loaded_files.destination.len(), source_len + loader.header_size);
+    }
+
+    fn delete_if_present(path : &str) {
+        if Path::new(path).exists() {
+            match fs::remove_file(path) {
+                Ok(ok) => {},
+                Err(err) => {
+                    assert!(false);
+                }
+            };
+        }
+    }
+
+    #[test]
+    fn test_load_files_decryption() {
+        delete_if_present(&"testfles/test3.txt");
+        let loader : FileLoader = FileLoader{
+            direction : Direction::Decrypt,
+            filename_extension : "enc".to_string(),
+            header_size : 28
+        };
+        let loaded_files = loader.load_files(&"testfiles/test3.txt.enc".to_string());
+        assert!(loaded_files.is_some());
+        let loaded_files = loaded_files.unwrap();
+        assert!(loaded_files.source.starts_with(b"test3.txt.enc"));
+        let source_len : usize = loaded_files.source.len();
+        let destination_len : usize = loaded_files.destination.len();
+        assert_eq!(loaded_files.destination.len(), source_len - loader.header_size);
+        
     }
 }
