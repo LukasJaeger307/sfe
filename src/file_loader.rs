@@ -57,17 +57,9 @@ impl FileLoader {
             if Path::new(&ciphertext_path).exists() {
                 None
             } else {
-                let source_file = match File::open(path) {
-                    Ok(file) => file,
-                    Err(err) => {
-                        return None;
-                    }
-                };
-                let source = match unsafe{MmapOptions::new().map(&source_file)} {
-                    Ok(source) => source,
-                    Err(err) => {
-                        return None;
-                    }
+                let source = match self.create_source_memmap(path) {
+                    None => {return None;}
+                    Some(source) => source
                 };
                 let destination_file = match OpenOptions::new()
                     .read(true)
@@ -101,7 +93,24 @@ impl FileLoader {
         }
     }
 
+    fn create_source_memmap(&self, path : &String) -> Option<Mmap> {
+        let source_file = match File::open(path) {
+            Ok(file) => Some(file),
+            Err(err) => None
+        };
+        match source_file {
+            None => None,
+            Some(source_file) => {
+                match unsafe{MmapOptions::new().map(&source_file)} {
+                    Ok(source) => Some(source),
+                    Err(err) => None
+                }
+            }
+        }
+    }
+    
     fn load_files_for_decryption(&self, path : &String) -> Option<LoadedFiles> {
+        // TODO: Implement!
         None
     }
 
