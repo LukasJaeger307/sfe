@@ -122,7 +122,6 @@ impl FileLoader {
             let extension_length : usize = self.filename_extension.len() + 1;
             let final_index : usize = path.len() - extension_length;
             let plaintext_path : String = path[0..final_index].to_string();
-            println!("Plaintext path: {}", plaintext_path);
             if Path::new(&plaintext_path).exists() {
                 None
             } else {
@@ -131,7 +130,7 @@ impl FileLoader {
                     Some(source) => source
                 };
                 let destination_length : usize = source.len() - self.header_size;
-                let destination = match self.create_destination_memmap(path, destination_length) {
+                let destination = match self.create_destination_memmap(&plaintext_path, destination_length) {
                     None =>{return None;}
                     Some(destination) => destination
                 };
@@ -215,7 +214,7 @@ mod file_loader_tests {
 
     #[test]
     fn test_load_files_decryption() {
-        delete_if_present(&"testfles/test3.txt");
+        delete_if_present(&"testfiles/test3.txt");
         let loader : FileLoader = FileLoader{
             direction : Direction::Decrypt,
             filename_extension : "enc".to_string(),
